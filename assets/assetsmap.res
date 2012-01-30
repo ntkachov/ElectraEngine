@@ -1,0 +1,17 @@
+0:/home/nick/workspace/ElectraEngine/assets/fragShader.glsl
+1:/home/nick/workspace/ElectraEngine/assets/assetsmap.res
+2:/home/nick/workspace/ElectraEngine/assets/vertexShader.glsl
+3:/home/nick/workspace/ElectraEngine/assets/scene.scene
+4:/home/nick/workspace/ElectraEngine/assets/models/cube.png
+5:/home/nick/workspace/ElectraEngine/assets/models/monkey.png
+6:/home/nick/workspace/ElectraEngine/assets/models/house.obj
+7:/home/nick/workspace/ElectraEngine/assets/models/monkey.obj
+8:/home/nick/workspace/ElectraEngine/assets/models/Tifa.png
+9:/home/nick/workspace/ElectraEngine/assets/models/Bunny.obj
+10:/home/nick/workspace/ElectraEngine/assets/models/model.obj
+11:/home/nick/workspace/ElectraEngine/assets/models/cube.obj
+12:/home/nick/workspace/ElectraEngine/assets/models/Tifa.obj
+13:/home/nick/workspace/ElectraEngine/assets/models/ico.obj
+14:/home/nick/workspace/ElectraEngine/assets/models/simpleScene.obj
+15:/home/nick/workspace/ElectraEngine/assets/models/ico.png
+16:/home/nick/workspace/ElectraEngine/assets/models/simpleScene.png
