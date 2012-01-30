@@ -55,7 +55,7 @@
  /home/nick/Desktop/android-ndk-r6b/platforms/android-5/arch-arm/usr/include/machine/limits.h \
  /home/nick/Desktop/android-ndk-r6b/platforms/android-5/arch-arm/usr/include/sys/syslimits.h \
  /home/nick/workspace/ElectraEngine/jni/EngineObject.h \
- /home/nick/workspace/ElectraEngine/jni/Model.h \
+ /home/nick/workspace/ElectraEngine/jni/Scene/Model.h \
  /home/nick/workspace/ElectraEngine/jni/glm/glm.hpp \
  /home/nick/workspace/ElectraEngine/jni/glm/core/_fixes.hpp \
  /home/nick/Desktop/android-ndk-r6b/sources/cxx-stl/stlport/stlport/cmath \
@@ -151,7 +151,11 @@
  /home/nick/Desktop/android-ndk-r6b/sources/cxx-stl/stlport/stlport/cstring \
  /home/nick/Desktop/android-ndk-r6b/sources/cxx-stl/stlport/stlport/stl/_cstring.h \
  /home/nick/Desktop/android-ndk-r6b/sources/cxx-stl/stlport/stlport/using/cstring \
- /home/nick/workspace/ElectraEngine/jni/glm/gtc/type_ptr.inl
+ /home/nick/workspace/ElectraEngine/jni/glm/gtc/type_ptr.inl \
+ /home/nick/workspace/ElectraEngine/jni/Scene/Scene.h \
+ /home/nick/workspace/ElectraEngine/jni/Helper.h \
+ /home/nick/workspace/ElectraEngine/jni/Engine/Engine.h \
+ /home/nick/workspace/ElectraEngine/jni/Helper.h
 
 /home/nick/Desktop/android-ndk-r6b/platforms/android-5/arch-arm/usr/include/jni.h:
 
@@ -263,7 +267,7 @@
 
 /home/nick/workspace/ElectraEngine/jni/EngineObject.h:
 
-/home/nick/workspace/ElectraEngine/jni/Model.h:
+/home/nick/workspace/ElectraEngine/jni/Scene/Model.h:
 
 /home/nick/workspace/ElectraEngine/jni/glm/glm.hpp:
 
@@ -456,3 +460,11 @@
 /home/nick/Desktop/android-ndk-r6b/sources/cxx-stl/stlport/stlport/using/cstring:
 
 /home/nick/workspace/ElectraEngine/jni/glm/gtc/type_ptr.inl:
+
+/home/nick/workspace/ElectraEngine/jni/Scene/Scene.h:
+
+/home/nick/workspace/ElectraEngine/jni/Helper.h:
+
+/home/nick/workspace/ElectraEngine/jni/Engine/Engine.h:
+
+/home/nick/workspace/ElectraEngine/jni/Helper.h:

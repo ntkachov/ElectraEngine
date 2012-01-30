@@ -1,28 +1,30 @@
 #include "EngineObject.h"
+#include <queue>
 
-Node* EngineStack = new Node("init");
+using namespace std;
+queue<const char*> engineQueue; //= new queue<const char *>();
 
 int JNIEngineFlag = 1;
+
+
 
 //Engine Call Stack to JNI
 //We use this to ask for models/textures/etc to load.
 void EngineStackpush(const char* str){
-	EngineStack->addNext(new Node(str));
+	engineQueue.push(str);
 }
 
-Node* EngineStackpop()
+const char* EngineStackpop()
 {
-	Node * return_v = EngineStack;
-	EngineStack = EngineStack->next;
-	return return_v;
+	const char * r = engineQueue.front();
+	 engineQueue.pop();
+	 return r;
 }
 
-
-Node::Node(const char * str)
+int EngineFlag()
 {
-	this->string = str;
-}
-
-void Node::addNext(Node * n){
-	this->next = n;
+	if(engineQueue.empty())
+		return 0;
+	else
+		return 1;
 }

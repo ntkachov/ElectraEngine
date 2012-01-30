@@ -28,8 +28,8 @@ public class GL2JNILib {
      * @param width the current view width
      * @param height the current view height
      */
-     public static native void init(int width, int height);
-     public static native int step();
+     public static native void init(int width, int height, String vertexShader, String fragShader);
+     public static native int step(float[] rotate, float[] translate);
      public static native String jinterface();
-     public static native void LoadModel(float[] verts, int vertN, float[] norms, int normN);
+     public static native void LoadModel(float[] verts, float[] norms, float[] uv, int vertN, int[] polygroups, float[] rotation, float[] translate, byte[] texture, int width);
 }

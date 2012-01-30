@@ -18,7 +18,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE    := libgl2jni
 LOCAL_CFLAGS    := -Werror
-LOCAL_SRC_FILES := gl_code.cpp EngineObject.cpp Model.cpp
+LOCAL_SRC_FILES := gl_code.cpp EngineObject.cpp Engine/Engine.cpp Scene/Model.cpp Scene/Scene.cpp  Scene/AnimationBuffer.cpp Scene/Light.cpp
 LOCAL_LDLIBS    := -llog -lGLESv2
 
 include $(BUILD_SHARED_LIBRARY)

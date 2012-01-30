@@ -11,172 +11,86 @@
 #include <math.h>
 
 #include "EngineObject.h"
-#include "Model.h"
+#include "Scene/Model.h"
+#include "Scene/Scene.h"
+#include "Engine/Engine.h"
+#include "Helper.h"
 
 #include<glm/glm.hpp>
 #include<glm/gtc/matrix_transform.hpp>
 #include<glm/gtc/type_ptr.hpp>
 
-#define  LOG_TAG    "libgl2jni"
-#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
-#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+const char* gVertexShader,* gFragmentShader;
 
+GLuint gProgram, gvPositionHandle,
+gMVP, gModelMatrix,
+gNomralMatrix, gvNormal,
+gvTexture, gS_Texture,
+gLightSource, gEye;
 
-Model* modle = new Model();
+GLuint windowSize_h, windowSize_w;
 
-static void printGLString(const char *name, GLenum s) {
-	const char *v = (const char *) glGetString(s);
-	LOGI("GL %s = %s\n", name, v);
+GLuint frameBuffer[4];
+
+bool EngineReady = false;
+
+void setupHandles(){
+	gMVP					= glGetUniformLocation(gProgram, "modelViewMatrix");
+	gModelMatrix 			= glGetUniformLocation(gProgram, "ModelMatrix");
+	gNomralMatrix 			=  glGetUniformLocation(gProgram, "NomralMatrix");
+	gS_Texture			 	= glGetUniformLocation(gProgram, "s_texture");
+	gLightSource			= glGetUniformLocation(gProgram, "lightSource");
+	gEye					= glGetUniformLocation(gProgram, "eye");
+//	gLightsCount 			= glGetUniformLocation(gProgram, "lightsCount");
+//	fLightsCount 			= glGetUniformLocation(gProgram, "fragLightsCount");
+	gvPositionHandle 		= glGetAttribLocation(gProgram, "vPosition");
+	gvNormal				= glGetAttribLocation(gProgram, "vNormal");
+	gvTexture 				= glGetAttribLocation(gProgram, "vTexture");
+
+	checkGlError("glGetAttribLocation");
 }
 
-static void checkGlError(const char* op) {
-	for (GLint error = glGetError(); error; error
-	= glGetError()) {
-		LOGI("after %s() glError (0x%x)\n", op, error);
+void initFrameBuffers(){
+	glGenFramebuffers(1, &frameBuffer[0]);
+	glGenRenderbuffers(2, &frameBuffer[1]);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer[0]);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindRenderbuffer(GL_RENDERBUFFER, frameBuffer[1]);
+	glBindRenderbuffer(GL_RENDERBUFFER, frameBuffer[2]);
+
+
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, windowSize_w, windowSize_h);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, windowSize_w, windowSize_h);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, windowSize_w, windowSize_h);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, frameBuffer[1]);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, frameBuffer[2]);
+
+
+	GLuint frameBufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if( frameBufferStatus !=  GL_FRAMEBUFFER_COMPLETE){
+		LOGE("Failed to make complete frame buffer object");
+		printNum(frameBufferStatus);
 	}
 }
-
-static void printNum(int i){
-	char strBuffer[4];
-	sprintf(strBuffer, "%i", i);
-	LOGI(strBuffer);
-}
-
-static const char gVertexShader[] = 
-		"attribute vec4 vPosition;\n"
-		//	"attribute vec4 SourceColor;\n"
-		//	"varying vec4 DestinationColor;\n"
-		"uniform mat4 modelViewMatrix;\n"
-		"void main() {\n"
-		//"DestinationColor = SourceColor;\n"
-		"  gl_Position = modelViewMatrix * vPosition;\n"
-		"}\n";
-
-static const char gFragmentShader[] = 
-		"precision mediump float;\n"
-		//	"varying lowp vec4 DestinationColor;\n"
-		"void main() {\n"
-		"  gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);\n"
-		"}\n";
-
-GLuint loadShader(GLenum shaderType, const char* pSource) {
-	GLuint shader = glCreateShader(shaderType);
-	if (shader) {
-		glShaderSource(shader, 1, &pSource, NULL);
-		glCompileShader(shader);
-		GLint compiled = 0;
-		glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-		if (!compiled) {
-			GLint infoLen = 0;
-			glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
-			if (infoLen) {
-				char* buf = (char*) malloc(infoLen);
-				if (buf) {
-					glGetShaderInfoLog(shader, infoLen, NULL, buf);
-					LOGE("Could not compile shader %d:\n%s\n",
-							shaderType, buf);
-					free(buf);
-				}
-				glDeleteShader(shader);
-				shader = 0;
-			}
-		}
-	}
-	return shader;
-}
-
-GLuint createProgram(const char* pVertexSource, const char* pFragmentSource) {
-	GLuint vertexShader = loadShader(GL_VERTEX_SHADER, pVertexSource);
-	if (!vertexShader) {
-		return 0;
-	}
-
-	GLuint pixelShader = loadShader(GL_FRAGMENT_SHADER, pFragmentSource);
-	if (!pixelShader) {
-		return 0;
-	}
-
-	GLuint program = glCreateProgram();
-	if (program) {
-		glAttachShader(program, vertexShader);
-		checkGlError("glAttachShader");
-		glAttachShader(program, pixelShader);
-		checkGlError("glAttachShader");
-		glLinkProgram(program);
-		GLint linkStatus = GL_FALSE;
-		glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
-		if (linkStatus != GL_TRUE) {
-			GLint bufLength = 0;
-			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &bufLength);
-			if (bufLength) {
-				char* buf = (char*) malloc(bufLength);
-				if (buf) {
-					glGetProgramInfoLog(program, bufLength, NULL, buf);
-					LOGE("Could not link program:\n%s\n", buf);
-					free(buf);
-				}
-			}
-			glDeleteProgram(program);
-			program = 0;
-		}
-	}
-	return program;
-}
-
-GLuint gProgram;
-GLuint gvPositionHandle;
-GLuint mvp_a_positionHandle;
-GLuint _colorSlot;
-float* Vertices;
-//GLuint vertexBuffer;
-/*
-void setupVBO(){
-//	vertexSize = sizeof(Vertices) / sizeof(float);
-//	indiceSize = sizeof(Indices) / sizeof(int);
-	glGenBuffers(1, &modle->bufferID);
-	glBindBuffer(GL_ARRAY_BUFFER, modle->bufferID);
-	glBufferData(GL_ARRAY_BUFFER, (modle->vertexNum) *  sizeof(float), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, modle->vertexNum * sizeof(float), Vertices);
-	checkGlError("Vertex VBO");
-	LOGI("Setup Called");
-	/*glGenBuffers(1, &indexBuffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indiceSize * sizeof(GLuint), Indices, GL_STATIC_DRAW);
-	checkGlError("Index VBO");
-}
-void updateVBO(){
-	glBufferData(GL_ARRAY_BUFFER, (modle->vertexNum) *  sizeof(float), Vertices, GL_STATIC_DRAW);
-	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, indiceSize * sizeof(GLuint), Indices, GL_STATIC_DRAW);
-	checkGlError("Update VBO");
-	LOGI("Updated VBO");
-/*	char strBuffer[4];
-		for(int i = 0 ; i < indiceSize; i++){
-			sprintf(strBuffer, "%i", Indices[i]);
-			LOGI(strBuffer);
-		}
-} */
 
 bool setupGraphics(int w, int h) {
 	printGLString("Version", GL_VERSION);
 	printGLString("Vendor", GL_VENDOR);
 	printGLString("Renderer", GL_RENDERER);
 	printGLString("Extensions", GL_EXTENSIONS);
-
+	windowSize_h = h; windowSize_w = w;
 	LOGI("setupGraphics(%d, %d)", w, h);
 	gProgram = createProgram(gVertexShader, gFragmentShader);
 	if (!gProgram) {
 		LOGE("Could not create program.");
 		return false;
 	}
-	mvp_a_positionHandle = glGetUniformLocation(gProgram, "modelViewMatrix");
-	gvPositionHandle = glGetAttribLocation(gProgram, "vPosition");
-	_colorSlot = glGetAttribLocation(gProgram, "SourceColor");
-	glEnableVertexAttribArray(_colorSlot);
-	LOGI("Found MVP Position Handle : %i", mvp_a_positionHandle);
-	LOGI("glGetAttribLocation(\"vPosition\") = %d\n",
-			gvPositionHandle);
-	checkGlError("glGetAttribLocation");
-	//setupVBO();
+	setupHandles();
+	//initFrameBuffers();
+	EngineStackpush("Engine Ready");
+
+	EngineReady = true;
 	return true;
 }
 
@@ -184,91 +98,93 @@ void setUniformMVP( GLuint Location, glm::vec3 const & Translate, glm::vec3 cons
 {
 	glm::mat4 Projection =
 			glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.f);
-	glm::mat4 ViewTranslate = glm::translate(
-			glm::mat4(1.0f),
-			Translate);
-	glm::mat4 ViewRotateX = glm::rotate(ViewTranslate,Rotate.y, glm::vec3(-1.0f, 0.0f, 0.0f));
-	glm::mat4 ViewRotateY = glm::rotate(ViewRotateX, Rotate.x, glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 View = glm::rotate(ViewRotateY, Rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));
-	glm::mat4 Model = glm::scale(
-			glm::mat4(1.0f),
-			glm::vec3(0.5f));
-	glm::mat4 MVP = Projection * View * Model;
+
+	glm::mat4 LookAt = glm::lookAt(Translate, Rotate, glm::vec3(0,1,0));
+
+	glm::mat4 MVP = Projection * LookAt;
 	glUniformMatrix4fv(
 			Location, 1, GL_FALSE, glm::value_ptr(MVP));
 }
 
 float rotate = 0;
-void renderFrame() {
-
+void renderFrame(glm::vec3 const & rotateV, glm::vec3 const & translateV) {
+	//glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer[0]);
+if(EngineReady){
 	glClearColor(0,0,0, 1.0f);
 	checkGlError("glClearColor");
 	glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 	checkGlError("glClear");
-	//glBindBuffer(GL_ARRAY_BUFFER, modle->bufferID);
 	glUseProgram(gProgram);
 	checkGlError("glUseProgram");
-	rotate+=0.5f;
-	if(rotate > 360)
-		rotate = 0;
 
-	setUniformMVP(mvp_a_positionHandle, glm::vec3(0,0,-3), glm::vec3(0,270,rotate));
-	if(modle->ready)
-		modle->onDraw(gvPositionHandle);
-
-
-/*	glVertexAttribPointer(gvPositionHandle, 3, GL_FLOAT, GL_FALSE,
-			0, 0);
-	checkGlError("glVertexAttribPointer");
-//	glVertexAttribPointer(_colorSlot, 4, GL_FLOAT, GL_FALSE,
-//			sizeof(float) * 7, (GLvoid*) (sizeof(float) * 3));
-	//checkGlError("glVertexAttribPointer");
-	glEnableVertexAttribArray(gvPositionHandle);
-	glDrawArrays(GL_TRIANGLES, 0, modle->vertexNum);
-	checkGlError("draw arrays");*/
-
-
-
-
+	glUniform3f(gEye, translateV[0], translateV[1], translateV[2]);
+	setUniformMVP(gMVP, translateV, rotateV + translateV);
+	DrawScene(gvPositionHandle, gvNormal, gModelMatrix, gNomralMatrix, gvTexture, gS_Texture, gLightSource);
+}
 }
 
 extern "C" {
-JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_init(JNIEnv * env, jobject obj,  jint width, jint height);
-JNIEXPORT int JNICALL Java_com_fbrs_electraengine_GL2JNILib_step(JNIEnv * env, jobject obj);
+JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_init(JNIEnv * env, jobject obj,  jint width, jint height, jstring vertexShader, jstring fragShader);
+JNIEXPORT int JNICALL Java_com_fbrs_electraengine_GL2JNILib_step(JNIEnv * env, jobject obj, jfloatArray rotate, jfloatArray translate);
 JNIEXPORT jstring JNICALL Java_com_fbrs_electraengine_GL2JNILib_jinterface(JNIEnv * env, jobject obj);
-JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_LoadModel(JNIEnv * env, jobject obj, jfloatArray verts, jint vertN, jfloatArray normals, jint normN);
+JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_LoadModel(JNIEnv * env, jobject obj, jfloatArray verts, jfloatArray norms, jfloatArray UVs,
+		jint vertN, jintArray polygroup, jfloatArray rotation, jfloatArray translate, jbyteArray texture, jint textureSize);
+JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_LoadScene(JNIEnv * env, jobject obj, jint assetCount, jintArray assets);
+JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_LoadLight(JNIEnv * env, jobject obj, )
 };
 
-JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_init(JNIEnv * env, jobject obj,  jint width, jint height)
+JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_init(JNIEnv * env, jobject obj,  jint width, jint height, jstring vertexShader, jstring fragShader)
 {
+	jboolean *isCopy;
+	gVertexShader = env->GetStringUTFChars(vertexShader, isCopy);
+	gFragmentShader = env->GetStringUTFChars(fragShader, isCopy);
 	setupGraphics(width, height);
 }
 extern int JNIEngineFlag;
-JNIEXPORT int JNICALL Java_com_fbrs_electraengine_GL2JNILib_step(JNIEnv * env, jobject obj)
+JNIEXPORT int JNICALL Java_com_fbrs_electraengine_GL2JNILib_step(JNIEnv * env, jobject obj, jfloatArray rotate, jfloatArray translate)
 {
-	renderFrame();
-	return JNIEngineFlag;
+	jboolean *isCopy;
+	jfloat * rot = env->GetFloatArrayElements(rotate, isCopy);
+	jfloat * trans = env->GetFloatArrayElements(translate, isCopy);
+	renderFrame(glm::vec3((float)rot[0],(float) rot[1], (float)rot[2]), glm::vec3((float)trans[0], (float)trans[1], (float)trans[2]));
+	env->ReleaseFloatArrayElements(rotate, rot, 0);
+	env->ReleaseFloatArrayElements(translate, trans, 0);
+	return EngineFlag();
 }
 
 JNIEXPORT jstring JNICALL Java_com_fbrs_electraengine_GL2JNILib_jinterface(JNIEnv * env, jobject obj)
 {
-	const char* return_string = EngineStackpop()->string;
-	return env->NewStringUTF(return_string);
+	return env->NewStringUTF(EngineStackpop());
 }
 
-JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_LoadModel(JNIEnv * env, jobject obj, jfloatArray verts, jint vertN, jfloatArray normals, jint normN)
+JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_LoadModel(JNIEnv * env, jobject obj, jfloatArray verts, jfloatArray norms, jfloatArray UVs,
+		jint vertN, jintArray polygroups, jfloatArray rotation, jfloatArray translate, jbyteArray texture, jint textureSize)
 {
 	jboolean *isCopy;
-	jfloat* model = env->GetFloatArrayElements(verts, isCopy);
+	jfloat* modelV = env->GetFloatArrayElements(verts, isCopy);
+	jfloat* modelN = env->GetFloatArrayElements(norms, isCopy);
+	jfloat* modelU = env->GetFloatArrayElements(UVs, isCopy);
+	jfloat* rot = env->GetFloatArrayElements(rotation, isCopy);
+	jfloat* trans = env->GetFloatArrayElements(translate, isCopy);
+	jint* polys = env->GetIntArrayElements(polygroups, isCopy);
+	GLubyte * textures =(GLubyte *) env->GetByteArrayElements(texture, isCopy);
 	int size =  vertN;
-	Vertices = model;
-	//Indices = (GLuint*)env->GetIntArrayElements(indices, isCopy);
-	//	vertexSize = size;
-	//indiceSize = indN;
-	modle->onLoad(size, (float*)model);
-//updateVBO();
 
+	AddModel(size, (float*)modelV, (float*) modelN, (float*)modelU, (int*) polys, rot, trans, textures, textureSize);
+	env->ReleaseFloatArrayElements(verts, modelV, 0);
+	env->ReleaseFloatArrayElements(norms, modelN, 0);
+	env->ReleaseFloatArrayElements(UVs, modelU, 0);
+	env->ReleaseFloatArrayElements(rotation, rot, 0);
+	env->ReleaseFloatArrayElements(translate, trans, 0);
+	env->ReleaseIntArrayElements(polygroups, polys, 0);
 	LOGI("Update Called");
+}
+
+JNIEXPORT void JNICALL Java_com_fbrs_electraengine_GL2JNILib_LoadScene(JNIEnv * env, jobject obj, jint assetCount, jintArray assets)
+{
+	jboolean *isCopy;
+	//jint* scene = env->GetFloatArrayElements(verts, isCopy);
+
 }
 

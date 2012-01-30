@@ -34,19 +34,19 @@ package com.fbrs.electraengine;
 
 import java.io.IOException;
 
-import android.content.Context;
-import android.graphics.PixelFormat;
-import android.opengl.GLSurfaceView;
-import android.util.AttributeSet;
-import android.util.Log;
-import android.view.KeyEvent;
-import android.view.MotionEvent;
-
 import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.egl.EGLContext;
 import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.opengles.GL10;
+
+import com.fbrs.electraengine.scene.SceneLoader;
+
+import android.content.Context;
+import android.graphics.PixelFormat;
+import android.opengl.GLSurfaceView;
+import android.util.Log;
+import android.view.MotionEvent;
 
 /**
  * A simple GLSurfaceView sub-class that demonstrate how to perform
@@ -68,16 +68,26 @@ import javax.microedition.khronos.opengles.GL10;
  */
 class GL2JNIView extends GLSurfaceView {
 	private static String TAG = "GL2JNIView";
-	private static final boolean DEBUG = false;
-
+	private static final boolean DEBUG = true;
+	public static float[] screenSize = new float[2];
+	
+	public static Camera camera;
+	
 	public GL2JNIView(Context context) {
 		super(context);
+		screenSize[0] = this.getWidth();
+		screenSize[1] = this.getHeight();
+		camera = new Camera(screenSize);
 		init(false, 24, 8);
 	}
 
 	public GL2JNIView(Context context, boolean translucent, int depth, int stencil) {
 		super(context);
+		screenSize[0] = this.getWidth();
+		screenSize[1] = this.getHeight();
+		camera = new Camera(screenSize);
 		init(translucent, depth, stencil);
+
 	}
 
 	private void init(boolean translucent, int depth, int stencil) {
@@ -99,7 +109,7 @@ class GL2JNIView extends GLSurfaceView {
 		/* We need to choose an EGLConfig that matches the format of
 		 * our surface exactly. This is going to be done in our
 		 * custom config chooser. See ConfigChooser class definition
-		 * below.
+		 * below.c
 		 */
 		setEGLConfigChooser( translucent ?
 				new ConfigChooser(8, 8, 8, 8, depth, stencil) :
@@ -204,8 +214,9 @@ class GL2JNIView extends GLSurfaceView {
 						EGL10.EGL_BLUE_SIZE, 0);
 				int a = findConfigAttrib(egl, display, config,
 						EGL10.EGL_ALPHA_SIZE, 0);
+				int samples = findConfigAttrib(egl, display, config, EGL10.EGL_SAMPLE_BUFFERS, 0);
 
-				if (r == mRedSize && g == mGreenSize && b == mBlueSize && a == mAlphaSize)
+				if (r == mRedSize && g == mGreenSize && b == mBlueSize && a == mAlphaSize && samples == 1)
 					return config;
 			}
 			return null;
@@ -324,17 +335,36 @@ class GL2JNIView extends GLSurfaceView {
 		protected int mStencilSize;
 		private int[] mValue = new int[1];
 	}
+	@Override
+	public boolean onTouchEvent(MotionEvent v){
+		return camera.TouchControls(v);
+	}
 
 	private static class Renderer implements GLSurfaceView.Renderer {
+
 		public void onDrawFrame(GL10 gl) {
-			GL2JNILib.step();
+			if(GL2JNILib.step(camera.rotateVec, camera.translateVec) == 1)//Load Model
+			{
+				String flag = GL2JNILib.jinterface();
+
+				//if(flag.equals("load model")){		
+					
+				//}
+			}
 		}
 
 		public void onSurfaceChanged(GL10 gl, int width, int height) {
-			GL2JNILib.init(width, height);
-
 			try {
-				ModelLoader.LoadModel(ActivityEntry.a, "models/Bunny.obj");
+				GL2JNILib.init(width, height, ElectraHelper.loadAsset("vertexShader.glsl"), ElectraHelper.loadAsset("fragShader.glsl"));
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			screenSize[0] = width;
+			screenSize[1] = height;
+			
+			try {
+				SceneLoader.loadScen("scene.scene");
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
