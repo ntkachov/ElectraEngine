@@ -1,4 +1,4 @@
-<h1> Electra Engine for Android </h1> 
+# Electra Engine for Android # 
 
 This was a few weeks worth of work to try my hand at a 3D c++ rendering engine for android.
 It currently supports textures, specularity. There are no plans to finish developing this. 
